@@ -1,0 +1,461 @@
+{
+  "name": "Ticket Reconciliation",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "33e43dea-1a9c-4744-a9f3-55d39d6a9654",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6aee8cd0-82e2-4a8f-9f7d-2edd4d87ba0f",
+              "name": "ticket_id",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "286080f6-91ba-4927-bb6c-e141d9c87493",
+      "name": "Recovery Input"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "1AXZ3Au33lM47vIC",
+          "mode": "list",
+          "cachedResultName": "AI Ticket Review Queue - Lab 12"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "ticket_id",
+              "keyValue": "={{ $json.ticket_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        0
+      ],
+      "id": "877ed3f9-6760-4225-96ad-324fc578f6d7",
+      "name": "Find Review Record",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "tGCt8ao4C9Kjzt8w",
+          "mode": "list",
+          "cachedResultName": "Customer Support Tickets - Lab 09"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "ticket_id",
+              "keyValue": "={{ $(\"Recovery Input\").first().json.ticket_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        0
+      ],
+      "id": "60bd45b1-bf3d-4b65-9b2f-b14fbb48187b",
+      "name": "Find Main Ticket",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst requestedId = $(\"Recovery Input\").first().json.ticket_id;\n\nconst review = $(\"Find Review Record\").first().json;\nconst main = $(\"Find Main Ticket\").first().json;\n\nconst teamMap = {\n  billing: \"Finance\",\n  technical: \"Technical Support\",\n  delivery: \"Logistics\",\n  other: \"Customer Support\"\n};\n\nconst errors = [];\n\nif (review.ticket_id !== requestedId) {\n  errors.push(\"Review record not found\");\n}\n\nif (main.ticket_id !== requestedId) {\n  errors.push(\"Main ticket not found\");\n}\n\nif (![\"approved\", \"approved_corrected\"].includes(review.review_status)) {\n  errors.push(\"Review is not awaiting promotion\");\n}\n\nconst category = String(review.reviewed_category ?? \"\")\n  .trim().toLowerCase();\n\nif (!Object.hasOwn(teamMap, category)) {\n  errors.push(\"Invalid reviewed category\");\n}\n\nif (main.category !== category) {\n  errors.push(\"Main category does not match approved category\");\n}\n\nif (main.customer_name !== review.customer_name ||\n    main.message !== review.message) {\n  errors.push(\"Main ticket content differs from review record\");\n}\n\nif (main.assigned_team !== teamMap[category]) {\n  errors.push(\"Assigned team differs from approved category\");\n}\n\nconst safeToRecover = errors.length === 0;\n\nreturn [{\n  json: {\n    ticket_id: requestedId,\n    safe_to_recover: safeToRecover,\n    errors,\n    previous_review_status: review.review_status,\n    event_id: `${requestedId}:promotion_recovered`,\n    event_type: \"promotion_recovered\",\n    details: \"Main ticket verified; review status reconciled\",\n    recorded_at: new Date().toISOString()\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        0
+      ],
+      "id": "363fdbd1-bc99-43b7-858f-86da1ed0a58d",
+      "name": "Evaluate Recovery"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "7ca03ac2-63c2-44d2-9266-e6f0e19d3a91",
+              "leftValue": "={{ $json.safe_to_recover }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1072,
+        0
+      ],
+      "id": "04857ea8-74db-4d47-9555-b02170d00441",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "1AXZ3Au33lM47vIC",
+          "mode": "list",
+          "cachedResultName": "AI Ticket Review Queue - Lab 12"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "ticket_id",
+              "keyValue": "={{ $json.ticket_id }}"
+            },
+            {
+              "keyName": "review_status",
+              "keyValue": "={{ $json.previous_review_status }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "review_status": "promoted"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ticket_id",
+              "displayName": "ticket_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ai_category",
+              "displayName": "ai_category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "review_reason",
+              "displayName": "review_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "review_status",
+              "displayName": "review_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewed_category",
+              "displayName": "reviewed_category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewed_note",
+              "displayName": "reviewed_note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewed_at",
+              "displayName": "reviewed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1296,
+        -96
+      ],
+      "id": "5fdd0c79-9676-47e7-825f-6b49f9148b04",
+      "name": "Update row(s)"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "jLWl7VbogAPQiARV",
+          "mode": "list",
+          "cachedResultName": "Ticket Audit Log - Lab 12"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "event_id",
+              "keyValue": "={{ $(\"Evaluate Recovery\").first().json.event_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_id": "={{ $(\"Evaluate Recovery\").first().json.event_id }}",
+            "ticket_id": "={{ $(\"Evaluate Recovery\").first().json.ticket_id }}",
+            "event_type": "={{ $(\"Evaluate Recovery\").first().json.event_type }}",
+            "details": "={{ $(\"Evaluate Recovery\").first().json.details }}",
+            "recorded_at": "={{ $(\"Evaluate Recovery\").first().json.recorded_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ticket_id",
+              "displayName": "ticket_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "details",
+              "displayName": "details",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "recorded_at",
+              "displayName": "recorded_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1520,
+        -96
+      ],
+      "id": "52b3bffe-6bb8-4aef-b0c7-e6e2dbd471da",
+      "name": "Upsert row(s)"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Recovery Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recovery Input": {
+      "main": [
+        [
+          {
+            "node": "Find Review Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Review Record": {
+      "main": [
+        [
+          {
+            "node": "Find Main Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Main Ticket": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Recovery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Recovery": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row(s)": {
+      "main": [
+        [
+          {
+            "node": "Upsert row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

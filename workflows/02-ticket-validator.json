@@ -1,0 +1,52 @@
+{
+  "name": "Ticket Validator",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "cea962f9-045a-4b67-a026-d80cf5a53eb9",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst allowed = [\n  \"billing\", \"technical\", \"delivery\", \"other\"\n];\n\nreturn $input.all().map((item, index) => {\n  const ticket = item.json;\n  const errors = [];\n\n  const readText = (field) =>\n    typeof ticket[field] === \"string\"\n      ? ticket[field].trim()\n      : \"\";\n\n  const ticket_id = readText(\"ticket_id\");\n  const customer_name = readText(\"customer_name\");\n  const message = readText(\"message\");\n  const category = readText(\"category\").toLowerCase();\n\n  if (!ticket_id) errors.push(\"Missing ticket ID\");\n  if (!customer_name) errors.push(\"Missing customer name\");\n  if (!message) errors.push(\"Missing customer message\");\n  if (!allowed.includes(category)) {\n    errors.push(\"Unsupported category\");\n  }\n\n  const valid = errors.length === 0;\n\n  return {\n    json: {\n      ticket_id,\n      customer_name,\n      message,\n      category,\n      valid,\n      validation_errors: errors,\n      status: valid\n        ? \"ready_for_processing\"\n        : \"needs_investigation\"\n    },\n    pairedItem: { item: index }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "03c9fb8d-64f4-4521-a1e9-f930d2edbde9",
+      "name": "Validate Incoming Tickets"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate Incoming Tickets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

@@ -1,0 +1,30 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local logs and temporary files
+*.log
+*.tmp
+*.bak
+*.backup
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python / JavaScript dependencies
+node_modules/
+__pycache__/
+.venv/
+
+# Local n8n runtime data
+.n8n/
+n8n_data/

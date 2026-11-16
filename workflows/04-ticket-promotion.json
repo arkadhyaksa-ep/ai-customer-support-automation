@@ -1,0 +1,460 @@
+{
+  "name": "Ticket Promotion",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "eb30367d-2262-441d-aa84-a781e766e4ec",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f11ba95e-129c-4133-bf52-afb4c6e76bbc",
+              "name": "ticket_id",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "fa49a879-ddae-47ee-a6fb-200571662a74",
+      "name": "Promotion Input"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "1AXZ3Au33lM47vIC",
+          "mode": "list",
+          "cachedResultName": "AI Ticket Review Queue - Lab 12"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "ticket_id",
+              "keyValue": "={{ $json.ticket_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "c8be4cef-995f-4d2e-9cfe-7a7fccb36ebf",
+      "name": "Get row(s)",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst record = $input.first().json;\nconst requestedId = $(\"Promotion Input\").first().json.ticket_id;\n\nconst allowedCategories = [\n  \"billing\", \"technical\", \"delivery\", \"other\"\n];\n\nconst teamMap = {\n  billing: \"Finance\",\n  technical: \"Technical Support\",\n  delivery: \"Logistics\",\n  other: \"Customer Support\"\n};\n\nconst approvedStatuses = [\n  \"approved\",\n  \"approved_corrected\"\n];\n\nconst errors = [];\n\nif (!record.ticket_id || record.ticket_id !== requestedId) {\n  errors.push(\"Review ticket not found\");\n}\n\nif (!approvedStatuses.includes(record.review_status)) {\n  errors.push(\"Ticket is not eligible for promotion\");\n}\n\nconst category = String(record.reviewed_category ?? \"\")\n  .trim()\n  .toLowerCase();\n\nif (!allowedCategories.includes(category)) {\n  errors.push(\"Invalid reviewed category\");\n}\n\nif (\n  typeof record.message !== \"string\" ||\n  !record.message.trim()\n) {\n  errors.push(\"Missing customer message\");\n}\n\nif (\n  typeof record.customer_name !== \"string\" ||\n  !record.customer_name.trim()\n) {\n  errors.push(\"Missing customer name\");\n}\n\nreturn [{\n  json: {\n    ticket_id: requestedId,\n    customer_name: record.customer_name ?? \"\",\n    message: record.message ?? \"\",\n    category,\n    assigned_team: teamMap[category] ?? \"\",\n    ticket_status: \"routed\",\n    previous_review_status: record.review_status,\n    promotion_valid: errors.length === 0,\n    promotion_errors: errors\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "1daab5ef-853f-40d0-b2fe-675eae04d6e5",
+      "name": "Validate Promotion"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "11d65720-548b-485a-91f8-bb5a2fc83666",
+              "leftValue": "={{ $json.promotion_valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        896,
+        0
+      ],
+      "id": "c1f9e907-8f77-4e07-a30f-c8a4248ce131",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "tGCt8ao4C9Kjzt8w",
+          "mode": "list",
+          "cachedResultName": "Customer Support Tickets - Lab 09"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "ticket_id",
+              "keyValue": "={{ $json.ticket_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        -96
+      ],
+      "id": "4326e072-3e90-4adf-b6ce-2828a71c4e26",
+      "name": "Check Main Ticket Does Not Exist"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "tGCt8ao4C9Kjzt8w",
+          "mode": "list",
+          "cachedResultName": "Customer Support Tickets - Lab 09"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ticket_id": "={{ $json.ticket_id }}",
+            "customer_name": "={{ $json.customer_name }}",
+            "message": "={{ $json.message }}",
+            "category": "={{ $json.category }}",
+            "assigned_team": "={{ $json.assigned_team }}",
+            "ticket_status": "={{ $json.ticket_status }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ticket_id",
+              "displayName": "ticket_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "assigned_team",
+              "displayName": "assigned_team",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ticket_status",
+              "displayName": "ticket_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        -96
+      ],
+      "id": "ed9077f9-f05d-446a-acdb-a737043f3031",
+      "name": "Insert Approved Ticket"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "1AXZ3Au33lM47vIC",
+          "mode": "list",
+          "cachedResultName": "AI Ticket Review Queue - Lab 12"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "ticket_id",
+              "keyValue": "={{ $(\"Validate Promotion\").first().json.ticket_id }}"
+            },
+            {
+              "keyName": "review_status",
+              "keyValue": "={{ $(\"Validate Promotion\").first().json.previous_review_status }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "review_status": "promoted"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ticket_id",
+              "displayName": "ticket_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ai_category",
+              "displayName": "ai_category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "review_reason",
+              "displayName": "review_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "review_status",
+              "displayName": "review_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewed_category",
+              "displayName": "reviewed_category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewed_note",
+              "displayName": "reviewed_note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewed_at",
+              "displayName": "reviewed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1568,
+        -96
+      ],
+      "id": "5dd480fc-df69-4e8a-a477-d842f949bd19",
+      "name": "Mark Review Promoted"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Promotion Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Promotion Input": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Validate Promotion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Promotion": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Check Main Ticket Does Not Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Main Ticket Does Not Exist": {
+      "main": [
+        [
+          {
+            "node": "Insert Approved Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Approved Ticket": {
+      "main": [
+        [
+          {
+            "node": "Mark Review Promoted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
