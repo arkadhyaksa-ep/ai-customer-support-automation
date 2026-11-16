@@ -257,6 +257,46 @@ The evaluator reports overall accuracy, per-category results, and individual pre
 
 The benchmark is a small functional evaluation, not evidence of production-level model accuracy or generalization.
 
+## Workflow Activation and Webhook Testing
+
+### Manual workflows
+
+The Human Review, Ticket Promotion, Ticket Reconciliation, and Model Benchmark workflows are designed to be executed manually when needed. Import and configure them before running their respective operations.
+
+The Ticket Validator workflow is invoked by the Customer Intake workflow. It does not need a separate public webhook.
+
+### Customer Intake webhook
+
+The Customer Intake workflow provides two webhook URL modes:
+
+| Mode | Webhook path | Usage |
+|---|---|---|
+| Test | `/webhook-test/ai-support-capstone-v1` | Development testing while the Webhook node is listening for a test event |
+| Production | `/webhook/ai-support-capstone-v1` | Requests handled by the published/active workflow |
+
+**Test mode**
+
+1. Open Customer Intake in the n8n editor.
+2. Select the Webhook node and start listening for a test event.
+3. Send a POST request to the test webhook URL.
+4. Start listening again when needed for another test request.
+
+**Production mode**
+
+1. Confirm that Data Table references, the Ticket Validator workflow reference, and Ollama connectivity are configured correctly.
+2. Publish or activate the Customer Intake workflow, depending on the n8n version.
+3. Use the production webhook URL shown in the Webhook node.
+4. Send test requests using the example PowerShell scripts, adjusting their configured URL if necessary.
+
+For a local n8n installation using the default port, the URLs typically resemble:
+
+- Test: `http://localhost:5678/webhook-test/ai-support-capstone-v1`
+- Production: `http://localhost:5678/webhook/ai-support-capstone-v1`
+
+Replace the hostname and port with your actual n8n address.
+
+**Important:** The webhook endpoint is intended for a local demonstration environment. The exported project does not implement production-grade webhook authentication or rate limiting. Do not expose it directly to the public internet without appropriate security controls.
+
 ### Troubleshooting
 
 If an Ollama HTTP Request fails, verify that:
